@@ -118,10 +118,16 @@ final class WindowManager: WindowManaging {
 /// returned by the AX APIs are validated with CFGetTypeID/AXValueGetType before use.
 enum AXWindow {
     static func frame(of window: AXUIElement) throws -> CGRect {
+        let positionValue = try axValue(kAXPositionAttribute, of: window, type: .cgPoint, failure: .positionUnavailable)
+        let sizeValue = try axValue(kAXSizeAttribute, of: window, type: .cgSize, failure: .sizeUnavailable)
         var origin = CGPoint.zero
         var size = CGSize.zero
-        try readValue(kAXPositionAttribute, of: window, type: .cgPoint, into: &origin, failure: .positionUnavailable)
-        try readValue(kAXSizeAttribute, of: window, type: .cgSize, into: &size, failure: .sizeUnavailable)
+        guard AXValueGetValue(positionValue, .cgPoint, &origin) else {
+            throw WindowManagerError.positionUnavailable
+        }
+        guard AXValueGetValue(sizeValue, .cgSize, &size) else {
+            throw WindowManagerError.sizeUnavailable
+        }
         return CGRect(origin: origin, size: size)
     }
 
@@ -171,13 +177,12 @@ enum AXWindow {
         )
     }
 
-    private static func readValue<T>(
+    private static func axValue(
         _ attribute: String,
         of element: AXUIElement,
         type: AXValueType,
-        into result: inout T,
         failure: WindowManagerError
-    ) throws {
+    ) throws -> AXValue {
         var raw: CFTypeRef?
         guard AXUIElementCopyAttributeValue(element, attribute as CFString, &raw) == .success,
               let raw, CFGetTypeID(raw) == AXValueGetTypeID() else {
@@ -185,9 +190,10 @@ enum AXWindow {
         }
         // Safe: the type ID was checked above.
         let axValue = raw as! AXValue
-        guard AXValueGetType(axValue) == type, AXValueGetValue(axValue, type, &result) else {
+        guard AXValueGetType(axValue) == type else {
             throw failure
         }
+        return axValue
     }
 
     private static func boolValue(_ attribute: String, of element: AXUIElement) -> Bool {
