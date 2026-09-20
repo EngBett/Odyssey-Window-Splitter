@@ -75,13 +75,41 @@ locally (ad-hoc); this is expected.
   from the menu or the Settings window, which also offers launch-at-login and a
   global-shortcuts toggle.
 
+## Building a distributable
+
+```bash
+scripts/build-release.sh
+```
+
+This produces a universal (Apple Silicon + Intel) Release build in `dist/`, as
+both a `.dmg` with an Applications drop target and a `.zip`, and prints the
+SHA-256 of each. [INSTALL.md](INSTALL.md) is the recipient-facing guide; the
+script copies it into the disk image as `Read Me First.txt`.
+
+Without an Apple Developer Program membership the app can only be ad-hoc
+signed, so macOS quarantines it on the receiving Mac and refuses the first
+launch. INSTALL.md covers the one-line `xattr` fix and the System Settings
+route. To ship a build that opens with no warning at all, supply a certificate
+and a notarization profile:
+
+```bash
+SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
+NOTARY_PROFILE=odyssey \
+scripts/build-release.sh
+```
+
+The app icon is generated rather than hand-drawn; regenerate it with
+`scripts/make-app-icon.py` (standard library only, no dependencies) after
+changing the design constants at the top of that script.
+
 ## Design and configuration decisions
 
 - **No App Sandbox.** The target has no sandbox entitlement because sandboxed
   processes cannot use the Accessibility API to control other apps' windows.
   This build is for local use and is not Mac App Store ready.
-- **Hardened Runtime is off** in this local configuration so the hosted unit
-  tests can inject into the app. Enable it (plus real signing) for distribution.
+- **Hardened Runtime is off** in the project so the hosted unit tests can inject
+  into the app. `scripts/build-release.sh` turns it on for release builds when a
+  Developer ID identity is supplied, without changing the project settings.
 - **Global shortcuts** use the native Carbon `RegisterEventHotKey` API — no
   third-party dependencies. Registration conflicts are reported in Settings.
 - **Layout math is pure** (`LayoutCalculator`, `CoordinateConverter`,
