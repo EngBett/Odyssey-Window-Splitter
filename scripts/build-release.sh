@@ -24,7 +24,7 @@ set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROJECT="$PROJECT_ROOT/OdysseyWindowSplitter.xcodeproj"
-TARGET="OdysseyWindowSplitter"
+SCHEME="OdysseyWindowSplitter"
 APP_NAME="OdysseyWindowSplitter"
 DIST="$PROJECT_ROOT/dist"
 WORK="$PROJECT_ROOT/dist/.build"
@@ -49,6 +49,31 @@ if ! xcodebuild -project "$PROJECT" -list >/dev/null 2>&1; then
   die "xcodebuild cannot read the project. Open Xcode once and let it finish
 installing its components, then retry. If it still fails, run:
     sudo xcodebuild -runFirstLaunch"
+fi
+
+# Check the credentials before spending minutes on a build that cannot be
+# signed or notarized with them.
+if [[ -n "$SIGN_IDENTITY" ]]; then
+  if ! security find-identity -v -p codesigning | grep -qF "$SIGN_IDENTITY"; then
+    die "No codesigning identity matching:
+    $SIGN_IDENTITY
+
+Identities currently in your keychain:
+$(security find-identity -v -p codesigning | sed 's/^/    /')
+
+A Developer ID certificate comes with an Apple Developer Program membership.
+Leave SIGN_IDENTITY unset to build an ad-hoc signed app instead."
+  fi
+fi
+
+if [[ -n "$NOTARY_PROFILE" ]]; then
+  if ! xcrun notarytool history --keychain-profile "$NOTARY_PROFILE" >/dev/null 2>&1; then
+    die "No notarytool keychain profile named '$NOTARY_PROFILE'. Create it once with:
+    xcrun notarytool store-credentials $NOTARY_PROFILE \\
+      --apple-id you@example.com --team-id TEAMID --password <app-specific-password>
+
+Leave NOTARY_PROFILE unset to skip notarization."
+  fi
 fi
 
 # --- build -------------------------------------------------------------------
@@ -76,7 +101,7 @@ fi
 
 xcodebuild \
   -project "$PROJECT" \
-  -target "$TARGET" \
+  -scheme "$SCHEME" \
   -configuration Release \
   -derivedDataPath "$WORK/DerivedData" \
   ARCHS="arm64 x86_64" \

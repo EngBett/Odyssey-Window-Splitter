@@ -8,6 +8,14 @@ alongside the MacBook display.
 The full product specification lives in
 [OdysseyWindowSplitter_README.md](OdysseyWindowSplitter_README.md).
 
+## Download
+
+Grab the latest `.dmg` from the
+[Releases page](https://github.com/EngBett/Odyssey-Window-Splitter/releases/latest),
+then follow [INSTALL.md](INSTALL.md) — the build is ad-hoc signed rather than
+notarized, so macOS blocks the first launch until the quarantine flag is
+cleared.
+
 ## Requirements
 
 - macOS 14.0 or later
